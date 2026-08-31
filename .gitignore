@@ -1,0 +1,31 @@
+# --- .NET build output (regenerated every build; never commit) ---
+bin/
+obj/
+*.dll
+*.pdb
+
+# --- .NET local secrets (secrets belong in k8s Secrets / env vars, never git) ---
+appsettings.Development.json
+secrets.json
+*.secrets.json
+
+# --- Environment files ---
+.env
+.env.*
+*.local
+
+# --- IDE / editor ---
+.vs/
+.idea/
+*.user
+*.suo
+.vscode/*
+!.vscode/extensions.json
+
+# --- OS junk ---
+.DS_Store
+Thumbs.db
+
+# --- Kubernetes / Helm local state ---
+*.tmp
+kubeconfig*
