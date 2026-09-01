@@ -1,6 +1,7 @@
 # --- .NET build output (regenerated every build; never commit) ---
 bin/
 obj/
+publish/
 *.dll
 *.pdb
 

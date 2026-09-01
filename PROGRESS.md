@@ -7,8 +7,21 @@ Session log for the banking-microservices learning project. Read this at the sta
 ## Current position
 
 - **Phase:** 3 — Local Kubernetes with k3d
-- **Step:** Phase 2 complete. Next: teach cluster/node/pod/deployment/service, then learner creates a
-  k3d cluster, writes Deployment + Service manifests, imports the image, and applies them.
+- **Step:** Phase 2 complete and committed (`e86ba12`, `da794d7`). Next: teach
+  cluster/node/pod/deployment/service, then learner creates a k3d cluster, writes Deployment + Service
+  manifests, imports the image, and applies them.
+
+## Platform decision (Phase 3)
+
+- Learner asked about using Red Hat OpenShift (OCP) instead of k3d, since banks run OpenShift.
+- **Decision: stay on k3d.** Cost adjudication: k3d is $0 with full cluster-admin; OpenShift Local (CRC)
+  is also $0 but needs 16 GB+ RAM (32 GB comfortable) and is heavy for fast iteration; the Developer
+  Sandbox has no cluster-admin (can't install Kong CRDs) and expires in 30 days; the cloud "60-day
+  trial" / ROSA is NOT free — the subscription is free but AWS/Azure worker nodes bill ~$10-25/day.
+- The Kubernetes concepts (pods, deployments, services, ingress, Helm, Kong, JWT) transfer ~1:1 to
+  OpenShift. OpenShift-specific layer (`oc`, Routes vs Ingress, SecurityContextConstraints, Projects,
+  BuildConfigs/ImageStreams) is a nameable add-on to learn later, and belongs in the README's
+  "what I'd do next" section as a portability note.
 
 ## Learner profile (from Phase 0 assessment)
 
@@ -46,7 +59,9 @@ Session log for the banking-microservices learning project. Read this at the sta
 
 ## Half-done / exact next action
 
-- Commit Phase 2 (`Dockerfile`, `.dockerignore`).
+- **Repo hygiene:** `src/account-service/publish/` build artifacts were committed in `da794d7`
+  (compiled `AccountService` binary, `web.config`, etc.). `.gitignore` covers `bin/`+`obj/` but not
+  `publish/`. Add `publish/` to `.gitignore` and `git rm --cached` those files.
 - Phase 3: teach k8s objects, then learner runs `k3d cluster create`, writes Deployment + Service
   manifests, `k3d image import account-service:0.1`, `kubectl apply`, inspects with get/describe/logs.
 
