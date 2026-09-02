@@ -6,10 +6,10 @@ Session log for the banking-microservices learning project. Read this at the sta
 
 ## Current position
 
-- **Phase:** 3 — Local Kubernetes with k3d
-- **Step:** Phase 2 complete and committed (`e86ba12`, `da794d7`). Next: teach
-  cluster/node/pod/deployment/service, then learner creates a k3d cluster, writes Deployment + Service
-  manifests, imports the image, and applies them.
+- **Phase:** 4 — Second & third services + inter-service calls
+- **Step:** Phase 3 complete. Next: teach in-cluster DNS/service discovery, typed HttpClient, env-var
+  config; learner scaffolds auth-service + transaction-service (reusing Phase 1-3 patterns) and writes
+  the transaction-service transfer logic that calls account-service by DNS name.
 
 ## Platform decision (Phase 3)
 
@@ -57,13 +57,22 @@ Session log for the banking-microservices learning project. Read this at the sta
   Taught: image vs container, Dockerfile instructions, layer caching + instruction ordering, multi-stage.
   Hiccup: Docker Desktop was stopped at session start of day 2 — `open -a Docker` fixed it.
 
+- **Phase 3 done:** k3d cluster `bankdev` (1 server + 1 agent, survives reboots). Learner wrote
+  `k8s/account-service-deployment.yaml` (Deployment, apps/v1, 2 replicas, label wiring app=account-service,
+  imagePullPolicy: IfNotPresent, containerPort 8080) and `k8s/account-service-service.yaml`
+  (Service, v1, ClusterIP, port 80 -> targetPort 8080). `k3d image import account-service:0.1 -c bankdev`,
+  applied both, verified self-healing (deleted a pod, ReplicaSet recreated it), reached it via
+  `kubectl port-forward service/account-service 8080:80` + curl.
+  Taught: manifest structure (apiVersion/kind/metadata/spec), Deployment->ReplicaSet->Pod, labels+selectors,
+  ClusterIP vs LoadBalancer, port vs targetPort, in-cluster DNS name, k3d image import, port-forward as dev-only.
+  Note: traefik (k3d built-in ingress) still running in kube-system — must disable in Phase 6 for Kong.
+  Repo hygiene fixed: `publish/` removed from tracking, added to `.gitignore` + `.dockerignore`.
+
 ## Half-done / exact next action
 
-- **Repo hygiene:** `src/account-service/publish/` build artifacts were committed in `da794d7`
-  (compiled `AccountService` binary, `web.config`, etc.). `.gitignore` covers `bin/`+`obj/` but not
-  `publish/`. Add `publish/` to `.gitignore` and `git rm --cached` those files.
-- Phase 3: teach k8s objects, then learner runs `k3d cluster create`, writes Deployment + Service
-  manifests, `k3d image import account-service:0.1`, `kubectl apply`, inspects with get/describe/logs.
+- Commit Phase 3 (`k8s/` manifests, `PROGRESS.md`).
+- Phase 4: teach service discovery + typed HttpClient + env config; learner scaffolds auth-service &
+  transaction-service, writes transfer logic (debit + credit via calls to account-service).
 
 ## Open questions / things to revisit
 
