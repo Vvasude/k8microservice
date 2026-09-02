@@ -6,10 +6,16 @@ Session log for the banking-microservices learning project. Read this at the sta
 
 ## Current position
 
-- **Phase:** 4 — Second & third services + inter-service calls
-- **Step:** Phase 3 complete. Next: teach in-cluster DNS/service discovery, typed HttpClient, env-var
-  config; learner scaffolds auth-service + transaction-service (reusing Phase 1-3 patterns) and writes
-  the transaction-service transfer logic that calls account-service by DNS name.
+- **Phase:** 4 — in progress. transaction-service transfer flow WORKS locally (two `dotnet run`
+  processes, curl transfer succeeded, balances moved, failure paths return 400).
+- **Next steps to finish Phase 4:**
+  1. Commit transaction-service.
+  2. Containerize transaction-service (Dockerfile + .dockerignore, same multi-stage pattern).
+  3. Write `k8s/transaction-service-deployment.yaml` + `-service.yaml`. Deployment MUST set env var
+     `AccountService__BaseUrl=http://account-service` (double underscore = config section separator)
+     so it calls account-service by k8s DNS name instead of localhost:5111.
+  4. Build/import image, apply, test transfer via port-forward to transaction-service.
+  5. Scaffold auth-service as a minimal stub (real JWT work is Phase 7).
 
 ## Platform decision (Phase 3)
 
