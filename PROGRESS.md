@@ -74,11 +74,23 @@ Session log for the banking-microservices learning project. Read this at the sta
   Note: traefik (k3d built-in ingress) still running in kube-system — must disable in Phase 6 for Kong.
   Repo hygiene fixed: `publish/` removed from tracking, added to `.gitignore` + `.dockerignore`.
 
+- **Phase 4 progress:**
+  - account-service `:0.2` deployed to k3d, scaled to **1 replica** (in-memory drift sidestep;
+    deployment manifest also set to replicas: 1). Restore to 2 after Phase 5 (DB).
+  - account-service Program.cs: `Account` is now a **class** in `Models/`, `AmountRequest` record in
+    `Dtos/`. Debit/credit endpoints written by learner.
+  - transaction-service scaffolded at `src/transaction-service/`. Has: `Clients/AccountClient.cs`
+    (typed HttpClient: GetAccountAsync/DebitAsync/CreditAsync), `Dtos/AccountDto.cs`,
+    `Dtos/TransferRequest.cs`, `Program.cs` with `AddHttpClient<AccountClient>` + `POST /transfers`
+    orchestration (validate → fetch both → check funds → debit → credit → compensating credit-back).
+  - Taught: DI, typed HttpClient + IHttpClientFactory (socket exhaustion), async/await, config via
+    env var, "each service owns its data; others call it over HTTP" (learner initially tried to put an
+    accounts list in transaction-service — corrected).
+
 ## Half-done / exact next action
 
-- Commit Phase 3 (`k8s/` manifests, `PROGRESS.md`).
-- Phase 4: teach service discovery + typed HttpClient + env config; learner scaffolds auth-service &
-  transaction-service, writes transfer logic (debit + credit via calls to account-service).
+- Commit transaction-service.
+- Then: containerize + deploy transaction-service (see Current position steps 2-5).
 
 ## Open questions / things to revisit
 
@@ -86,5 +98,9 @@ Session log for the banking-microservices learning project. Read this at the sta
   `double` reasoning later — both are common interview questions.
 - Phase 2 checkpoint (explain each Dockerfile stage) also **skipped** by learner's choice.
 - Learner tends to re-paste code rather than answer conceptual questions, and asks for files to be
-  written for them (Dockerfile). Hold the line on the "learner writes the important code" rule — offer
+  written for them. Hold the line on the "learner writes the important code" rule — offer
   fill-in-the-blank skeletons rather than finished files, and keep nudging for explanations.
+- Learner is genuinely new to C# — recurring friction with: which file/project code belongs in,
+  namespace = folder path, `if` needs parentheses, `req.Amount` vs bare `amount`. Slow, concrete,
+  one-file-at-a-time works best. Comment-skeleton with numbered TODO steps worked well for the
+  transfer endpoint. Phase 4 checkpoint (trace a transfer + name failure points) still pending.
