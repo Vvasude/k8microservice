@@ -6,16 +6,13 @@ Session log for the banking-microservices learning project. Read this at the sta
 
 ## Current position
 
-- **Phase:** 4 — in progress. transaction-service transfer flow WORKS locally (two `dotnet run`
-  processes, curl transfer succeeded, balances moved, failure paths return 400).
-- **Next steps to finish Phase 4:**
-  1. Commit transaction-service.
-  2. Containerize transaction-service (Dockerfile + .dockerignore, same multi-stage pattern).
-  3. Write `k8s/transaction-service-deployment.yaml` + `-service.yaml`. Deployment MUST set env var
-     `AccountService__BaseUrl=http://account-service` (double underscore = config section separator)
-     so it calls account-service by k8s DNS name instead of localhost:5111.
-  4. Build/import image, apply, test transfer via port-forward to transaction-service.
-  5. Scaffold auth-service as a minimal stub (real JWT work is Phase 7).
+- **Phase:** 4 essentially COMPLETE. transaction-service + account-service both deployed to k3d;
+  in-cluster transfer (`POST /transfers` via port-forward) succeeds — transaction-service pod calls
+  account-service pod by DNS name `http://account-service` (env var `AccountService__BaseUrl` in the
+  Deployment). Pending: Phase 4 checkpoint questions, final commit.
+- **auth-service deferred to Phase 7** (learner's choice — a stub that returns fake tokens teaches
+  nothing; it gets built when JWT work is real).
+- **Next:** Phase 5 — persistence with PostgreSQL + EF Core.
 
 ## Platform decision (Phase 3)
 
@@ -87,10 +84,17 @@ Session log for the banking-microservices learning project. Read this at the sta
     env var, "each service owns its data; others call it over HTTP" (learner initially tried to put an
     accounts list in transaction-service — corrected).
 
+  - transaction-service containerized (`transaction-service:0.1`, Dockerfile adapted from account-service),
+    imported to k3d, deployed via `k8s/transaction-service-deployment.yaml` (2 replicas — stateless, so
+    scaling is safe, unlike account-service) + `k8s/transaction-service-service.yaml` (ClusterIP 80->8080).
+  - In-cluster transfer verified: `curl POST localhost:8090/transfers` (port-forward) -> status completed.
+
 ## Half-done / exact next action
 
-- Commit transaction-service.
-- Then: containerize + deploy transaction-service (see Current position steps 2-5).
+- Run Phase 4 checkpoint (trace a transfer; name 2 failure points that leave balances wrong).
+- Commit: `k8s/` manifests + `src/transaction-service/Dockerfile` + `.dockerignore`.
+- Start Phase 5: EF Core + Npgsql packages, entity classes + DbContext, migration, deploy Postgres
+  to cluster (Deployment + PVC), connection string via k8s Secret. Then restore account-service to 2 replicas.
 
 ## Open questions / things to revisit
 
