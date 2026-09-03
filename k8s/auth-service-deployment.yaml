@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+spec:
+  replicas: 2                    # how many identical pods to keep running
+  selector:
+    matchLabels:
+      app: auth-service       # "the pods I manage are the ones with this label"
+  template:                      # the pod blueprint — everything below describes ONE pod
+    metadata:
+      labels:
+        app: auth-service     # pods get stamped with this; MUST match the selector above
+    spec:
+      containers:
+        - name: auth-service
+          image: auth-service:0.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ConnectionStrings__Default
+              valueFrom:
+                secretKeyRef:
+                  name: auth-db-secret
+                  key: ConnectionStrings__Default
+            - name: Jwt__Secret
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secret
+                  key: Jwt__Secret
