@@ -1,17 +1,26 @@
 using TransactionService.Clients;
 using TransactionService.Dtos;
+using TransactionService.Models;
+using TransactionService.Data;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+var connectionString = builder.Configuration.GetConnectionString("Default")
+    ?? "Host=localhost;Port=5432;Database=transactions;Username=postgres;Password=postgres";
 
+builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 var accountServiceUrl = builder.Configuration["AccountService:BaseUrl"] ?? "http://localhost:5111";
 builder.Services.AddHttpClient<AccountClient>(client =>
 {
     client.BaseAddress = new Uri(accountServiceUrl);
 });
-
 var app = builder.Build();
-
-app.MapPost("/transfers", async (TransferRequest req, AccountClient accounts) =>
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+}
+app.MapPost("/transfers", async (TransferRequest req, AccountClient accounts, AppDbContext db) =>
 {
     if (req.Amount <= 0)
     {
@@ -50,8 +59,19 @@ app.MapPost("/transfers", async (TransferRequest req, AccountClient accounts) =>
         await accounts.CreditAsync(req.FromAccountId, req.Amount); 
         return Results.Problem("Transfer failed, funds restored");
     }
-
+    db.Transactions.Add(new Transaction
+{
+    FromAccountId = req.FromAccountId,
+    ToAccountId = req.ToAccountId,
+    Amount = req.Amount,
+    Status = "completed",
+    CreatedAt = DateTime.UtcNow
+});
+    await db.SaveChangesAsync();
     return Results.Ok(new { req.FromAccountId, req.ToAccountId, req.Amount, status = "completed" });
 });
+
+app.MapGet("/transfers", async (AppDbContext db) =>
+    await db.Transactions.OrderByDescending(t => t.CreatedAt).ToListAsync());
 
 app.Run();

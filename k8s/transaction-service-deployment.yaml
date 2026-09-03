@@ -14,10 +14,15 @@ spec:
     spec:
       containers:
         - name: transaction-service
-          image: transaction-service:0.1
+          image: transaction-service:0.2
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
           env:
             - name: AccountService__BaseUrl
               value: http://account-service
+            - name: ConnectionStrings__Default
+              valueFrom:
+                secretKeyRef:
+                  name: transaction-db-secret
+                  key: ConnectionStrings__Default

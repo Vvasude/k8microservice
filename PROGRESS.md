@@ -10,22 +10,36 @@ Session log for the banking-microservices learning project. Read this at the sta
 
 ## Current position
 
-- **Phase:** 5 — Persistence. account-service now persists to PostgreSQL via EF Core, verified LOCALLY.
-- Considered Supabase (hosted DB); learner agreed to stick with in-cluster Postgres for the k8s
-  learning (PVC/Secret). README "what I'd do next" should note: swap for managed DB in production.
-- **Done (local):** EF Core + Npgsql packages; `Data/AppDbContext.cs` (DbSet<Account>); DbContext
-  registered with `UseNpgsql` + connection-string fallback; local Postgres in Docker
-  (`bank-postgres`, postgres:17, db `accounts`, pw postgres, port 5432); `InitialCreate` migration
-  applied; startup seed block (`db.Database.Migrate()` + seed if empty); all 4 endpoints rewritten
-  to async EF Core (`FirstOrDefaultAsync` / `SaveChangesAsync`). Persistence verified via restart +
-  direct psql query.
-- **Next (cluster):**
-  1. Add `.OrderBy(a => a.Id)` to GET /accounts (SQL has no inherent order), rebuild, commit.
-  2. Deploy Postgres to k3d: Deployment + Service + **PersistentVolumeClaim** (teach PVC).
-  3. Create k8s **Secret** for DB password; wire connection string into account-service via env.
-  4. Build account-service:0.3, redeploy (startup Migrate() runs migration against cluster PG).
-  5. Scale account-service back to **2 replicas** (safe now — shared DB).
-  6. Give transaction-service its own DB + `transactions` table (records each transfer).
+- **Phase 5 COMPLETE.** Both services persist to PostgreSQL in the cluster.
+- **Next: Phase 6 — Kong API gateway.**
+
+### Phase 5 outcome
+
+- **Postgres in k3d:** `k8s/postgres-{pvc,deployment,service}.yaml`. PVC `postgres-pvc` (1Gi,
+  local-path), Deployment `postgres` (postgres:17, 1 replica, mounts PVC at
+  /var/lib/postgresql/data), Service `postgres:5432`. Password via `postgres-secret`.
+- **account-service:** `Account` is an EF entity (class, Models/); `Data/AppDbContext.cs`
+  (DbSet<Account>); all 4 endpoints async EF Core; startup `Migrate()` + seed-if-empty.
+  Image `account-service:0.3`, **2 replicas**. Connection string via Secret `account-db-secret`
+  (env `ConnectionStrings__Default`, `Host=postgres;Database=accounts`). Migration
+  `20260903144027_InitialCreate` in `src/account-service/Migrations/`.
+- **transaction-service:** `Transaction` entity (Id, FromAccountId, ToAccountId, decimal Amount,
+  Status, CreatedAt); `Data/AppDbContext.cs` (DbSet<Transaction>); `/transfers` now records a
+  row on success; new `GET /transfers` returns history desc. Startup `Migrate()` (auto-creates
+  the `transactions` DB). Image `transaction-service:0.2`, 2 replicas. Secret `transaction-db-secret`
+  (`Host=postgres;Database=transactions`). Migration in `src/transaction-service/Migrations/`.
+- **Local dev:** Docker container `bank-postgres` (postgres:17, port 5432) — keep running for
+  local `dotnet run`. Services fall back to `Host=localhost;...` when the env var is absent.
+
+### Known gotchas / polish items (for README "what I'd do next")
+
+- Every replica runs `db.Database.Migrate()` on startup — EF's table lock makes it safe but the
+  correct pattern is a migration Job / initContainer.
+- `libgssapi_krb5.so.2` warning in account-service logs — Npgsql optional Kerberos libs missing
+  from slim aspnet image; non-fatal (password auth). One-line apt install in Dockerfile silences it.
+- `kubectl exec -it ...` swallows output when stdout isn't a TTY — drop `-it` for scripted queries.
+- Postgres `Balance`/`Amount` columns are unbounded `numeric` — prod would use `numeric(18,2)`.
+- README must document the `kubectl create secret ...` commands (secrets aren't in the repo).
 
 ## Platform decision (Phase 3)
 
@@ -104,8 +118,12 @@ Session log for the banking-microservices learning project. Read this at the sta
 
 ## Half-done / exact next action
 
-- See "Next (cluster)" steps under Current position.
-- Commit pending: `src/account-service` (EF Core changes + `Migrations/` folder — that IS source, commit it).
+- **Commit pending:** `src/transaction-service` (EF Core + Transaction entity + Migrations/),
+  `k8s/transaction-service-deployment.yaml` (env var + image :0.2), `PROGRESS.md`.
+  (account-service Phase 5 work was committed earlier.)
+- **Phase 6 — Kong:** disable k3d's built-in Traefik ingress; `helm repo add`/`helm install` Kong
+  Ingress Controller (DB-less); write Ingress rules mapping `/accounts`, `/transfers` (and later
+  `/auth`) to the services; verify traffic flows through Kong instead of port-forward.
 
 ## Open questions / things to revisit
 
