@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: account-service
 spec:
-  replicas: 1                    # how many identical pods to keep running
+  replicas: 2                    # how many identical pods to keep running
   selector:
     matchLabels:
       app: account-service       # "the pods I manage are the ones with this label"
@@ -14,7 +14,13 @@ spec:
     spec:
       containers:
         - name: account-service
-          image: account-service:0.2
+          image: account-service:0.3
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
+          env:
+            - name: ConnectionStrings__Default
+              valueFrom:
+                secretKeyRef:
+                  name: account-db-secret
+                  key: ConnectionStrings__Default
