@@ -10,8 +10,34 @@ Session log for the banking-microservices learning project. Read this at the sta
 
 ## Current position
 
-- **Phase 5 COMPLETE.** Both services persist to PostgreSQL in the cluster.
-- **Next: Phase 6 — Kong API gateway.**
+- **Phase 6 COMPLETE.** Kong API gateway routes all north-south traffic.
+- **Next: Phase 7 — Auth & JWT end to end** (build auth-service, register/login, JWT issuance,
+  secure the other services, Kong JWT + rate-limiting plugins).
+
+### Phase 6 outcome
+
+- Traefik (k3d default ingress) disabled in-place: `kubectl -n kube-system delete helmchart traefik
+  traefik-crd` (k3s ran helm-delete jobs that removed the deployment/CRDs). No cluster recreate.
+- Kong installed via Helm: `helm repo add kong https://charts.konghq.com`; `helm install kong
+  kong/kong -n kong --create-namespace --set ingressController.enabled=true --set env.database=off`
+  (DB-less). Kong 3.9.3. Pod `kong-kong-*` 2/2 (proxy + controller). `kong-kong-proxy` is
+  LoadBalancer :80/:443 — EXTERNAL-IP is k3d node IPs (not host-reachable), so reach Kong via
+  `kubectl port-forward -n kong service/kong-kong-proxy 8000:80`.
+- `k8s/bank-ingress.yaml`: Ingress `bank-ingress`, `ingressClassName: kong`,
+  annotation `konghq.com/strip-path: "false"` (services expect full path), Prefix rules
+  `/accounts` -> account-service:80, `/transfers` -> transaction-service:80.
+- Verified: `curl localhost:8000/accounts`, `/accounts/1`, `POST /transfers`, `GET /transfers` all
+  work through Kong; `/nonsense` returns Kong's `no Route matched` 404 with `Server: kong/3.9.3`.
+
+### Run-book items (for README, Phase 10) — NOT in the repo
+
+- `helm repo add kong https://charts.konghq.com && helm install kong kong/kong -n kong
+  --create-namespace --set ingressController.enabled=true --set env.database=off`
+- `kubectl -n kube-system delete helmchart traefik traefik-crd` (disable default ingress)
+- `kubectl create secret generic postgres-secret --from-literal=POSTGRES_PASSWORD=...`
+- `kubectl create secret generic account-db-secret --from-literal=ConnectionStrings__Default='Host=postgres;Port=5432;Database=accounts;Username=postgres;Password=...'`
+- `kubectl create secret generic transaction-db-secret --from-literal=ConnectionStrings__Default='Host=postgres;Port=5432;Database=transactions;Username=postgres;Password=...'`
+- Ideal fresh setup: `k3d cluster create bankdev --agents 1 --k3s-arg "--disable=traefik@server:*" -p "8000:80@loadbalancer"` (avoids the in-place Traefik removal and the port-forward).
 
 ### Phase 5 outcome
 
@@ -118,12 +144,11 @@ Session log for the banking-microservices learning project. Read this at the sta
 
 ## Half-done / exact next action
 
-- **Commit pending:** `src/transaction-service` (EF Core + Transaction entity + Migrations/),
-  `k8s/transaction-service-deployment.yaml` (env var + image :0.2), `PROGRESS.md`.
-  (account-service Phase 5 work was committed earlier.)
-- **Phase 6 — Kong:** disable k3d's built-in Traefik ingress; `helm repo add`/`helm install` Kong
-  Ingress Controller (DB-less); write Ingress rules mapping `/accounts`, `/transfers` (and later
-  `/auth`) to the services; verify traffic flows through Kong instead of port-forward.
+- **Commit pending:** `k8s/bank-ingress.yaml`, `PROGRESS.md` (and check the transaction-service
+  Phase 5 commit went through).
+- **Phase 7 — Auth & JWT:** build `auth-service` (register/login, password hashing, JWT issuance);
+  secure account-service + transaction-service to require a valid JWT; enable Kong's JWT plugin
+  and rate-limiting plugin; add `/auth` route to `bank-ingress.yaml`; test the full authenticated flow.
 
 ## Open questions / things to revisit
 
