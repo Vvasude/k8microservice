@@ -4,15 +4,28 @@ Session log for the banking-microservices learning project. Read this at the sta
 
 ---
 
+- **Phase 4 COMPLETE** (checkpoint skipped by learner). transaction-service + account-service deployed
+  to k3d; in-cluster transfer works via DNS name `http://account-service` (env `AccountService__BaseUrl`).
+- **auth-service deferred to Phase 7** (learner's choice).
+
 ## Current position
 
-- **Phase:** 4 essentially COMPLETE. transaction-service + account-service both deployed to k3d;
-  in-cluster transfer (`POST /transfers` via port-forward) succeeds — transaction-service pod calls
-  account-service pod by DNS name `http://account-service` (env var `AccountService__BaseUrl` in the
-  Deployment). Pending: Phase 4 checkpoint questions, final commit.
-- **auth-service deferred to Phase 7** (learner's choice — a stub that returns fake tokens teaches
-  nothing; it gets built when JWT work is real).
-- **Next:** Phase 5 — persistence with PostgreSQL + EF Core.
+- **Phase:** 5 — Persistence. account-service now persists to PostgreSQL via EF Core, verified LOCALLY.
+- Considered Supabase (hosted DB); learner agreed to stick with in-cluster Postgres for the k8s
+  learning (PVC/Secret). README "what I'd do next" should note: swap for managed DB in production.
+- **Done (local):** EF Core + Npgsql packages; `Data/AppDbContext.cs` (DbSet<Account>); DbContext
+  registered with `UseNpgsql` + connection-string fallback; local Postgres in Docker
+  (`bank-postgres`, postgres:17, db `accounts`, pw postgres, port 5432); `InitialCreate` migration
+  applied; startup seed block (`db.Database.Migrate()` + seed if empty); all 4 endpoints rewritten
+  to async EF Core (`FirstOrDefaultAsync` / `SaveChangesAsync`). Persistence verified via restart +
+  direct psql query.
+- **Next (cluster):**
+  1. Add `.OrderBy(a => a.Id)` to GET /accounts (SQL has no inherent order), rebuild, commit.
+  2. Deploy Postgres to k3d: Deployment + Service + **PersistentVolumeClaim** (teach PVC).
+  3. Create k8s **Secret** for DB password; wire connection string into account-service via env.
+  4. Build account-service:0.3, redeploy (startup Migrate() runs migration against cluster PG).
+  5. Scale account-service back to **2 replicas** (safe now — shared DB).
+  6. Give transaction-service its own DB + `transactions` table (records each transfer).
 
 ## Platform decision (Phase 3)
 
@@ -91,10 +104,8 @@ Session log for the banking-microservices learning project. Read this at the sta
 
 ## Half-done / exact next action
 
-- Run Phase 4 checkpoint (trace a transfer; name 2 failure points that leave balances wrong).
-- Commit: `k8s/` manifests + `src/transaction-service/Dockerfile` + `.dockerignore`.
-- Start Phase 5: EF Core + Npgsql packages, entity classes + DbContext, migration, deploy Postgres
-  to cluster (Deployment + PVC), connection string via k8s Secret. Then restore account-service to 2 replicas.
+- See "Next (cluster)" steps under Current position.
+- Commit pending: `src/account-service` (EF Core changes + `Migrations/` folder — that IS source, commit it).
 
 ## Open questions / things to revisit
 

@@ -1,72 +1,66 @@
 // import the classes
 using AccountService.Models;
 using AccountService.Dtos;
+using AccountService.Data;
+using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
+var connectionString = builder.Configuration.GetConnectionString("Default")
+    ?? "Host=localhost;Port=5432;Database=accounts;Username=postgres;Password=postgres";
+
+builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 var app = builder.Build();
-var accounts = new List <Account>{
-
-     new Account
-    {
-        Id = 1,
-        Owner = "Varnesh",
-        Balance = 100.00m
-    },
-    new Account
-    {
-        Id = 2,
-        Owner = "John",
-        Balance = 250.50m
-    },
-    new Account
-    {
-        Id = 3,
-        Owner = "Sarah",
-        Balance = 500.75m
-    }
-};
-
-app.MapGet("/accounts", ()=> accounts);
-app.MapGet("/accounts/{id}", (int id) =>
+using (var scope = app.Services.CreateScope())
 {
-    var a = accounts.FirstOrDefault(a => a.Id == id);
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
 
-    if (a == null)
+    if (!db.Accounts.Any())
     {
-        return Results.NotFound("Account not found");
+        db.Accounts.AddRange(
+            new Account { Id = 1, Owner = "Varnesh", Balance = 100.00m },
+            new Account { Id = 2, Owner = "John",    Balance = 250.50m },
+            new Account { Id = 3, Owner = "Sarah",   Balance = 500.75m }
+        );
+        db.SaveChanges();
     }
+}
 
-    return Results.Ok(a);
+app.MapGet("/accounts", async (AppDbContext db) => await db.Accounts.OrderBy(a => a.Id).ToListAsync());
+app.MapGet("/accounts/{id}", async (int id, AppDbContext db) =>
+{
+    var account = await db.Accounts.FirstOrDefaultAsync(a => a.Id == id);
+    return account is null ? Results.NotFound("Account not found") : Results.Ok(account);
 });
 
-app.MapPost("/accounts/{id}/debit", (int id, AmountRequest req) =>{
-    // create a 404 if account doesnt exist
-    var activeAccount = accounts.FirstOrDefault(activeAccount => activeAccount.Id == id);
-    
-    if (activeAccount == null){
-        return Results.NotFound("Account not Found");
-    }
-    // create a 400 if amount is less than 0 since we cannot deposit negative amounts
-    if (req.Amount <= 0 ){
+app.MapPost("/accounts/{id}/debit", async (int id, AmountRequest req, AppDbContext db) =>
+{
+    var account = await db.Accounts.FirstOrDefaultAsync(a => a.Id == id);
+    if (account is null)
+        return Results.NotFound("Account not found");
+
+    if (req.Amount <= 0)
         return Results.BadRequest("Debit must be greater than 0");
-    }
-    if (activeAccount.Balance < req.Amount){
-        return Results.BadRequest("Insufficient funds");
-    }
-    activeAccount.Balance -= req.Amount;
-    return Results.Ok(activeAccount);
 
+    if (account.Balance < req.Amount)
+        return Results.BadRequest("Insufficient funds");
+
+    account.Balance -= req.Amount;
+    await db.SaveChangesAsync();          // <-- persists the change
+    return Results.Ok(account);
 });
 
-app.MapPost("/accounts/{id}/credit", (int id, AmountRequest req) =>{
-    var accountCredit = accounts.FirstOrDefault(accountCredit => accountCredit.Id == id);
-    if (accountCredit == null){
+app.MapPost("/accounts/{id}/credit", async (int id, AmountRequest req, AppDbContext db) =>
+{
+    var account = await db.Accounts.FirstOrDefaultAsync(a => a.Id == id);
+    if (account is null)
         return Results.NotFound("Account not found");
-    }
-    if (req.Amount <=0){
-        return Results.BadRequest("Cannot deposit negative amount");
-    }
-    accountCredit.Balance += req.Amount;
-    return Results.Ok(accountCredit);
+
+    if (req.Amount <= 0)
+        return Results.BadRequest("Cannot credit a negative amount");
+
+    account.Balance += req.Amount;
+    await db.SaveChangesAsync();
+    return Results.Ok(account);
 });
 
 app.Run();
