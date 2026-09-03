@@ -10,9 +10,34 @@ Session log for the banking-microservices learning project. Read this at the sta
 
 ## Current position
 
-- **Phase 6 COMPLETE.** Kong API gateway routes all north-south traffic.
-- **Next: Phase 7 — Auth & JWT end to end** (build auth-service, register/login, JWT issuance,
-  secure the other services, Kong JWT + rate-limiting plugins).
+- **Phase 7 COMPLETE.** Full auth flow works: register/login -> JWT -> Kong enforces it.
+- **Next: Phase 8 — Frontend** (Blazor WASM or Angular; learner picks. 3 screens: login, accounts,
+  transfer. Calls the API through Kong. Containerize + deploy like the others.)
+
+### Phase 7 outcome
+
+- **auth-service** (`src/auth-service/`, image `auth-service:0.1`, 2 replicas): `User` entity
+  (Id/Username/PasswordHash), `AppDbContext` (DbSet<User>), own `users` database (auto-created by
+  startup Migrate()). `POST /auth/register` (bcrypt hash via `BCrypt.Net-Next`, 409 if taken),
+  `POST /auth/login` (bcrypt verify, 401 on fail, issues HS256 JWT via `System.IdentityModel.Tokens.Jwt`
+  with claims sub/unique_name, iss=auth-service, aud=bank-api, 1h exp).
+- Secrets: `auth-db-secret` (connection string), `jwt-secret` (`Jwt__Secret` signing key).
+- **Kong JWT plugin** (`k8s/kong-jwt.yaml`): KongPlugin `jwt-auth` + KongConsumer `bank-api-consumer`
+  + imperative labeled secret `bank-jwt-credential` (kongCredType=jwt, key=auth-service, algorithm=HS256,
+  secret=<same as jwt-secret>). Kong matches token `iss` -> credential `key` -> verifies signature.
+- **Kong rate-limiting plugin** (`k8s/kong-rate-limit.yaml`): `rate-limit`, 10/min, policy=local.
+- **Ingress split**: `bank-ingress-public.yaml` (/auth, plugins: rate-limit),
+  `bank-ingress-protected.yaml` (/accounts + /transfers, plugins: jwt-auth,rate-limit).
+  Old combined `k8s/bank-ingress.yaml` deleted.
+- Verified: no token -> 401, valid -> 200, bad sig -> 401, /auth public, 11th req/min -> 429.
+
+### Run-book additions (README, Phase 10) — NOT in repo
+
+- `kubectl create secret generic auth-db-secret --from-literal=ConnectionStrings__Default='Host=postgres;Port=5432;Database=users;Username=postgres;Password=...'`
+- `kubectl create secret generic jwt-secret --from-literal=Jwt__Secret='<32+ byte key>'`
+- `kubectl create secret generic bank-jwt-credential --from-literal=kongCredType=jwt --from-literal=key=auth-service --from-literal=algorithm=HS256 --from-literal=secret='<same key as jwt-secret>'` then `kubectl label secret bank-jwt-credential konghq.com/credential=jwt`
+- JWT signing is symmetric (HMAC) for simplicity; production would use asymmetric (RS256) so the
+  private key never leaves auth-service.
 
 ### Phase 6 outcome
 
