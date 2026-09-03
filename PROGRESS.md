@@ -144,8 +144,12 @@ Session log for the banking-microservices learning project. Read this at the sta
 
 ## Half-done / exact next action
 
-- **Commit pending:** `k8s/bank-ingress.yaml`, `PROGRESS.md` (and check the transaction-service
-  Phase 5 commit went through).
+- **Commit pending:** `src/transaction-service/Models/Transaction.cs` (was committed BROKEN in
+  6fe5b4e — editor reverted it to `TransactionServiceService.Models` + `FromAccountIdAccountId`
+  typo; restored, builds clean), `k8s/bank-ingress.yaml`, `PROGRESS.md`.
+- **Recurring issue:** learner runs `git add .` + commit without reviewing the diff; has committed
+  bad content twice (publish/ dir, then reverted Transaction.cs). Nudge `git diff --cached` before
+  every commit.
 - **Phase 7 — Auth & JWT:** build `auth-service` (register/login, password hashing, JWT issuance);
   secure account-service + transaction-service to require a valid JWT; enable Kong's JWT plugin
   and rate-limiting plugin; add `/auth` route to `bank-ingress.yaml`; test the full authenticated flow.
