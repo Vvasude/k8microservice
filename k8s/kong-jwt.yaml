@@ -1,0 +1,15 @@
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: jwt-auth
+plugin: jwt
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongConsumer
+metadata:
+  name: bank-api-consumer
+  annotations:
+    kubernetes.io/ingress.class: kong
+username: bank-api-consumer
+credentials:
+  - bank-jwt-credential
