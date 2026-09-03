@@ -169,12 +169,23 @@ Session log for the banking-microservices learning project. Read this at the sta
 
 ## Half-done / exact next action
 
-- **Commit pending:** `src/transaction-service/Models/Transaction.cs` (was committed BROKEN in
-  6fe5b4e — editor reverted it to `TransactionServiceService.Models` + `FromAccountIdAccountId`
-  typo; restored, builds clean), `k8s/bank-ingress.yaml`, `PROGRESS.md`.
-- **Recurring issue:** learner runs `git add .` + commit without reviewing the diff; has committed
-  bad content twice (publish/ dir, then reverted Transaction.cs). Nudge `git diff --cached` before
-  every commit.
+- **Commit pending:** `k8s/kong-jwt.yaml`, `k8s/kong-rate-limit.yaml`, `k8s/bank-ingress-public.yaml`,
+  `k8s/bank-ingress-protected.yaml`, delete `k8s/bank-ingress.yaml`, `PROGRESS.md`.
+- **Phase 8:** ask learner Blazor WASM vs Angular (explain trade-off first). Build login/accounts/
+  transfer screens calling the API through Kong (localhost:8000 via port-forward, or a proper
+  cluster port map). Handle CORS. Containerize + deploy (static frontend behind nginx, or Blazor
+  static hosting). Add a `/` route to Kong for the frontend.
+
+## Recurring issues with this learner (keep applying)
+
+- Runs `git add .` + commit without reviewing the diff; has committed bad content 3x (publish/ dir,
+  reverted Transaction.cs, ...). Always nudge `git diff --cached` before commits.
+- New to C#: recurring friction with which file/project code goes in, namespace = folder path,
+  `if` needs parens, variable name consistency. Editor frequently reverts/duplicates on paste —
+  small support files (entities, DTOs, Service YAMLs) keep landing empty or with wrong names;
+  fastest to just write those and have the learner own the endpoint/business logic.
+- Frequently skips checkpoint questions and asks for files to be written. Hold the line on
+  business logic; be generous with boilerplate.
 - **Phase 7 — Auth & JWT:** build `auth-service` (register/login, password hashing, JWT issuance);
   secure account-service + transaction-service to require a valid JWT; enable Kong's JWT plugin
   and rate-limiting plugin; add `/auth` route to `bank-ingress.yaml`; test the full authenticated flow.
