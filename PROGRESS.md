@@ -10,9 +10,15 @@ Session log for the banking-microservices learning project. Read this at the sta
 
 ## Current position
 
-- **Phase 8 COMPLETE.** Angular SPA works end to end through Kong (register/login/accounts/transfer).
-- **Next: Phase 9 (observability, OPTIONAL) or Phase 10 (README + architecture diagram + demo video —
-  the actual portfolio deliverables).** Ask the learner which; Phase 10 is the priority.
+- **Phase 10 IN PROGRESS.** `README.md` written (full §10 structure), `scripts/deploy.sh` +
+  `scripts/teardown.sh` created (idempotent one-shot deploy: cluster w/ traefik disabled + port
+  8000 mapped, helm Kong, 6 secrets, build+import 4 images, apply k8s/, wait rollouts).
+- **Remaining for Phase 10:**
+  1. Learner fills in the "What I learned" section of the README (left as a prompt).
+  2. Test `./scripts/teardown.sh && ./scripts/deploy.sh` on a clean cluster (§10 requires it).
+  3. Record 2-4 min demo video, add link to README.
+  4. Optional: unit test on transfer logic (§7).
+- Phase 9 (OpenTelemetry) optional. Phase 11 (GH Actions CI) optional stretch.
 
 ### Phase 8 outcome
 
