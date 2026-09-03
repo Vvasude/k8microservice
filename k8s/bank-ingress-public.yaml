@@ -4,6 +4,7 @@ metadata:
   name: bank-ingress-public
   annotations:
     konghq.com/strip-path: "false"
+    konghq.com/plugins: rate-limit
 spec:
   ingressClassName: kong
   rules:
