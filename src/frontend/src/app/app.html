@@ -1,0 +1,14 @@
+<header class="topbar">
+  <span class="brand">🏦 SimBank</span>
+  @if (auth.isLoggedIn()) {
+    <nav>
+      <a routerLink="/accounts" routerLinkActive="active">Accounts</a>
+      <a routerLink="/transfer" routerLinkActive="active">Transfer</a>
+      <button type="button" class="linkish" (click)="logout()">Log out</button>
+    </nav>
+  }
+</header>
+
+<main class="page">
+  <router-outlet />
+</main>

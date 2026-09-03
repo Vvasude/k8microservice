@@ -10,9 +10,31 @@ Session log for the banking-microservices learning project. Read this at the sta
 
 ## Current position
 
-- **Phase 7 COMPLETE.** Full auth flow works: register/login -> JWT -> Kong enforces it.
-- **Next: Phase 8 — Frontend** (Blazor WASM or Angular; learner picks. 3 screens: login, accounts,
-  transfer. Calls the API through Kong. Containerize + deploy like the others.)
+- **Phase 8 COMPLETE.** Angular SPA works end to end through Kong (register/login/accounts/transfer).
+- **Next: Phase 9 (observability, OPTIONAL) or Phase 10 (README + architecture diagram + demo video —
+  the actual portfolio deliverables).** Ask the learner which; Phase 10 is the priority.
+
+### Phase 8 outcome
+
+- **Angular 22 SPA** at `src/frontend/` (standalone, ZONELESS — must use signals for async-updated
+  state, plain props only for ngModel fields). Files: `auth.ts` (token in signal + localStorage),
+  `api.ts`, `auth-interceptor.ts` (Bearer + 401->logout, skips /auth/*), `auth-guard.ts`,
+  `login.ts` / `accounts.ts` / `transfer.ts` (transfer uses account dropdowns from GET /accounts +
+  refreshes after). All API calls use RELATIVE urls (same-origin via Kong).
+- `proxy.config.json` + start script `ng serve --proxy-config proxy.config.json` for local dev
+  (proxies /auth /accounts /transfers -> localhost:8000).
+- **Container:** `src/frontend/Dockerfile` multi-stage node:22-alpine build -> nginx:1.27-alpine.
+  `src/frontend/nginx.conf` has SPA history fallback `try_files $uri $uri/ /index.html`.
+  Build output is `dist/frontend/browser/`. Image `frontend:0.1`, 2 replicas.
+- **k8s:** `k8s/frontend-deployment.yaml` + `frontend-service.yaml` (port 80->80).
+- **Kong:** added `path: /` -> frontend:80 to `k8s/bank-ingress-public.yaml` (longest-prefix means
+  /auth, /accounts, /transfers still win). Whole app served at http://localhost:8000/ via Kong.
+
+### Known simplifications (README "what I'd do next")
+
+- Users (auth-service) and Accounts (account-service) are NOT linked — every logged-in user sees the
+  same 3 seeded accounts. Would key accounts by the JWT `sub` claim.
+- Token in localStorage (XSS-exposed); httpOnly cookie is better.
 
 ### Phase 7 outcome
 
@@ -169,12 +191,27 @@ Session log for the banking-microservices learning project. Read this at the sta
 
 ## Half-done / exact next action
 
-- **Commit pending:** `k8s/kong-jwt.yaml`, `k8s/kong-rate-limit.yaml`, `k8s/bank-ingress-public.yaml`,
-  `k8s/bank-ingress-protected.yaml`, delete `k8s/bank-ingress.yaml`, `PROGRESS.md`.
-- **Phase 8:** ask learner Blazor WASM vs Angular (explain trade-off first). Build login/accounts/
-  transfer screens calling the API through Kong (localhost:8000 via port-forward, or a proper
-  cluster port map). Handle CORS. Containerize + deploy (static frontend behind nginx, or Blazor
-  static hosting). Add a `/` route to Kong for the frontend.
+- **Commit pending:** `src/frontend/` (34 files), `k8s/frontend-deployment.yaml`,
+  `k8s/frontend-service.yaml`, `k8s/bank-ingress-public.yaml`, `PROGRESS.md`.
+- **Phase 10 (priority):** write the full `README.md` per CLAUDE.md §10 (pitch + disclaimer,
+  architecture diagram, tech stack + why, what it demonstrates, run-it-yourself commands tested on
+  a clean checkout, demo video link, "what I learned / what I'd do next"). Consolidate the run-book
+  items scattered through this file (helm install, all `kubectl create secret` commands, the ideal
+  `k3d cluster create` flags). Then the learner records a 2-4 min demo showing the app + the cluster
+  underneath (`kubectl get pods`, a request through Kong, a transfer succeeding).
+- Phase 9 (OpenTelemetry tracing) is optional — offer, don't push.
+- Phase 11 (GitHub Actions CI + GHCR) is optional stretch.
+
+## The whole system now (for quick recall)
+
+Browser -> Kong (:8000 via port-forward) -> {
+  `/`         -> frontend  (nginx serving Angular SPA)
+  `/auth`     -> auth-service   -> `users` DB          [rate-limited]
+  `/accounts` -> account-service -> `accounts` DB      [JWT required, rate-limited]
+  `/transfers`-> transaction-service -> `transactions` DB, calls account-service  [JWT required, rate-limited]
+}
+All in k3d cluster `bankdev`. Postgres 1 pod + PVC. Each app service 2 replicas.
+Images: account-service:0.3, transaction-service:0.2, auth-service:0.1, frontend:0.1.
 
 ## Recurring issues with this learner (keep applying)
 
