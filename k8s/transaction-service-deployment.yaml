@@ -12,6 +12,15 @@ spec:
       labels:
         app: transaction-service     # pods get stamped with this; MUST match the selector above
     spec:
+      initContainers:
+        # Block startup until Postgres is accepting connections, so the app's
+        # Database.Migrate() on boot doesn't crash on "connection refused".
+        - name: wait-for-postgres
+          image: postgres:17
+          command:
+            - sh
+            - -c
+            - 'until pg_isready -h postgres -p 5432; do echo "waiting for postgres..."; sleep 2; done'
       containers:
         - name: transaction-service
           image: transaction-service:0.2

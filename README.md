@@ -220,13 +220,6 @@ key.
 
 ---
 
-## What I learned
-
-_(Your honest reflection — a few paragraphs. Suggested prompts: what surprised you about Kubernetes
-networking? What was harder than expected about the transfer flow spanning two services? What did
-building the Kong config teach you that a framework's built-in auth wouldn't have? What would you do
-differently if you started over?)_
-
 ## What I'd do next
 
 - **Link users to accounts.** Right now `auth-service` users and `account-service` accounts are
@@ -245,9 +238,3 @@ differently if you started over?)_
 - **CI** — GitHub Actions to build, lint, run the transfer unit test, and push images to GHCR.
 - **Column precision** — `numeric(18,2)` on money columns instead of unbounded `numeric`.
 - **httpOnly cookie** for the token instead of `localStorage` (XSS resistance).
-
----
-
-## License
-
-MIT — it's a learning project. Do not use it to store anything you care about.
