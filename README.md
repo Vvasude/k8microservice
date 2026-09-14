@@ -217,8 +217,6 @@ key.
 - **Link users to accounts.** Right now `auth-service` users and `account-service` accounts are
   unrelated — every logged-in user sees the same seeded accounts. `account-service` should create an
   account per user, keyed by the JWT `sub` claim.
-- **Run migrations as a Job / initContainer**, not from every replica's startup (EF's advisory lock
-  makes the current approach safe but it's a smell).
 - **Run it on OpenShift (OCP).** The same manifests on an enterprise Kubernetes distribution —
   Routes instead of raw Ingress, built-in image builds and registry, and the stricter security
   context constraints that a real platform team would enforce.
