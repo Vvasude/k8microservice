@@ -4,13 +4,6 @@ A simulated retail-banking application — **log in, view accounts, transfer fun
 independent C# microservices, running on a local Kubernetes cluster, with **Kong** as the API
 gateway enforcing JWT authentication and rate limiting.
 
-> ⚠️ **This is a learning simulation, not a real bank.** No real money, no real personal data, no
-> regulatory compliance. It exists to demonstrate the *technologies* — microservices, an API
-> gateway, container orchestration, JWT auth, and persistence — not to be a production financial
-> system. Where a real system would do something differently, the README says so.
-
-**▶️ Demo video:** _(2–4 min walkthrough — link to be added)_
-
 ---
 
 ## What this project demonstrates
