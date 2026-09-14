@@ -66,8 +66,7 @@ services and at least four calls:
    (`POST /accounts/{to}/credit`). The balance arithmetic happens *inside* `account-service` — the
    one place that owns account state.
 5. If the **credit fails after the debit succeeded**, `transaction-service` issues a compensating
-   `credit` back to the source account and returns an error. (A real system would use the *saga
-   pattern* or an event log — see "What I'd do next".)
+   `credit` back to the source account and returns an error.
 6. On success, `transaction-service` writes a row to its own `transactions` database and returns.
 
 ---
@@ -218,16 +217,16 @@ key.
 - **Link users to accounts.** Right now `auth-service` users and `account-service` accounts are
   unrelated — every logged-in user sees the same seeded accounts. `account-service` should create an
   account per user, keyed by the JWT `sub` claim.
-- **Asymmetric JWTs (RS256)** so the signing key never leaves `auth-service`, and add refresh tokens
-  + short access-token lifetimes.
 - **Run migrations as a Job / initContainer**, not from every replica's startup (EF's advisory lock
   makes the current approach safe but it's a smell).
-- **Sagas for the transfer.** The compensating credit-back is a toy; a real system needs an event
-  log or an orchestrated saga with retries and idempotency keys.
+- **Run it on OpenShift (OCP).** The same manifests on an enterprise Kubernetes distribution —
+  Routes instead of raw Ingress, built-in image builds and registry, and the stricter security
+  context constraints that a real platform team would enforce.
+- **Istio for east-west traffic.** Today only north-south calls are authenticated, at Kong; a
+  service mesh would add mTLS and per-service authorization policies between the services
+  themselves, so `account-service` can verify *which* service is calling it.
 - **Managed Postgres** (RDS / Cloud SQL / Supabase) instead of an in-cluster pod, and `policy: redis`
   for Kong's rate limiter so the count is shared across gateway replicas.
 - **Observability** — OpenTelemetry tracing to see a transfer span across services, and structured
   logs shipped to a collector.
 - **CI** — GitHub Actions to build, lint, run the transfer unit test, and push images to GHCR.
-- **Column precision** — `numeric(18,2)` on money columns instead of unbounded `numeric`.
-- **httpOnly cookie** for the token instead of `localStorage` (XSS resistance).
