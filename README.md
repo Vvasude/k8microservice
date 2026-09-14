@@ -10,12 +10,12 @@ gateway enforcing JWT authentication and rate limiting.
 
 | Skill | Where it shows up |
 |---|---|
-| **Microservice decomposition** | Four services (`auth`, `account`, `transaction`, `frontend`), each owning one responsibility and its own data store |
+| **Microservice decomposition** | Four services (`auth`, `account`, `transaction`, `frontend`), each owning one responsibility and its own database, built and deployed independently |
 | **Inter-service communication** | `transaction-service` calls `account-service` over in-cluster DNS to move funds; failure handling with a compensating action |
-| **Container orchestration** | Deployments, Services, ReplicaSets, rolling updates, a StatefulSet-style Postgres with a PersistentVolumeClaim — all on local Kubernetes (k3d) |
-| **API gateway pattern** | Kong as the single north-south entry point: path-based routing, JWT validation, and rate limiting applied at the edge so the services carry **zero auth code** |
+| **Container orchestration** | Deployments, Services, ReplicaSets, rolling updates, a single-replica Postgres Deployment backed by a PersistentVolumeClaim — all on local Kubernetes (k3d) |
+| **API gateway pattern** | Kong as the single north-south entry point: path-based routing, JWT validation, and rate limiting applied once at the edge instead of duplicated in every service |
 | **Stateless JWT authentication** | `auth-service` issues HS256 tokens; Kong verifies them by matching the `iss` claim to a credential; the trust chain works across services that never issued the token |
-| **Persistence & migrations** | EF Core + PostgreSQL, schema managed by code-first migrations applied automatically on pod startup |
+| **Persistence & migrations** | EF Core + PostgreSQL, schema managed by code-first migrations, versioned in the repo and applied on deploy |
 | **Secrets management** | Every password and signing key lives in a Kubernetes Secret, injected as an environment variable — nothing sensitive is committed to Git |
 | **Infrastructure as code** | The entire stack comes up from `./scripts/deploy.sh` on a clean checkout |
 
@@ -46,7 +46,7 @@ gateway enforcing JWT authentication and rate limiting.
               ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
               │  users  DB   │   │ accounts  DB │   │ transactions │
               └──────────────┘   └──────────────┘   └──────────────┘
-                        one PostgreSQL pod  +  PersistentVolumeClaim
+              a database per service, on one PostgreSQL pod + PersistentVolumeClaim
 
           Everything above runs inside a local Kubernetes cluster (k3d).
 ```
@@ -148,7 +148,7 @@ When it finishes, open **<http://localhost:8000>**.
 
 > To use your own credentials: `JWT_SIGNING_KEY=… DB_PASSWORD=… ./scripts/deploy.sh`
 
-### Verify the cluster is real
+### Verify the deployment
 
 ```bash
 kubectl get pods                       # 2 replicas each of account/transaction/auth/frontend, 1 postgres
@@ -197,8 +197,8 @@ host port).
 trust chain:
 
 1. `auth-service` signs a token with a shared secret (`Jwt__Secret`), setting `iss: "auth-service"`.
-2. That same secret is stored a second time as a **Kong JWT credential** (`bank-jwt-credential`),
-   keyed by `auth-service`.
+2. The same key is given to Kong as a **JWT credential** (`bank-jwt-credential`), keyed by
+   `auth-service` — both come from one generated value at deploy time.
 3. A request arrives at Kong with `Authorization: Bearer <token>`. Kong reads the `iss` claim
    (`auth-service`), looks up the credential with that key, and verifies the signature with its
    secret. Expired or tampered → `401`, and the request never reaches a service.
@@ -206,25 +206,24 @@ trust chain:
    annotation on `bank-ingress-protected`. `/auth` and `/` are on `bank-ingress-public` (rate-limit
    only) — you can't require a token in order to *get* a token.
 
-This is **symmetric** signing (HMAC) for simplicity. Production would use **asymmetric** (RS256):
-`auth-service` signs with a private key that never leaves it, and everyone verifies with the public
-key.
+Signing is **HS256** (HMAC): one key, held by the issuer and the gateway, delivered to both as a
+Kubernetes Secret that is generated at deploy time and never committed.
 
 ---
 
 ## What I'd do next
 
-- **Link users to accounts.** Right now `auth-service` users and `account-service` accounts are
-  unrelated — every logged-in user sees the same seeded accounts. `account-service` should create an
-  account per user, keyed by the JWT `sub` claim.
+- **Per-user account ownership.** `account-service` provisions an account per user at registration
+  and checks the JWT `sub` claim against the account on every read, debit, and credit — resource
+  authorization layered on top of the authentication Kong already enforces at the edge.
 - **Run it on OpenShift (OCP).** The same manifests on an enterprise Kubernetes distribution —
   Routes instead of raw Ingress, built-in image builds and registry, and the stricter security
   context constraints that a real platform team would enforce.
-- **Istio for east-west traffic.** Today only north-south calls are authenticated, at Kong; a
-  service mesh would add mTLS and per-service authorization policies between the services
-  themselves, so `account-service` can verify *which* service is calling it.
-- **Managed Postgres** (RDS / Cloud SQL / Supabase) instead of an in-cluster pod, and `policy: redis`
-  for Kong's rate limiter so the count is shared across gateway replicas.
+- **Istio for east-west traffic.** Kong secures the edge; a service mesh extends that inward with
+  mTLS and per-service authorization policies, so `account-service` can verify *which* service is
+  calling it and not only that the call came from inside the cluster.
+- **Managed Postgres** (RDS / Cloud SQL / Supabase) instead of an in-cluster pod, and a shared-store
+  (`policy: redis`) rate limiter so limits hold as the gateway scales out.
 - **Observability** — OpenTelemetry tracing to see a transfer span across services, and structured
   logs shipped to a collector.
 - **CI** — GitHub Actions to build, lint, run the transfer unit test, and push images to GHCR.
